@@ -234,7 +234,7 @@ public class Ivogacha implements ModInitializer {
             	}
             };
             inventoryHolder[0] = fillDefaultInventory(inventoryHolder[0]);
-            inventoryHolder[0]=LootUtil.init(inventoryHolder[0],"default",isMulti);
+            inventoryHolder[0]=LootUtil.init(inventoryHolder[0],pool.get("item_pool").getAsString(),isMulti);
             int ticks = 1;
             int total = ticks * 50;
             Style style = Style.EMPTY.withItalic(true).withBold(true);
@@ -506,8 +506,14 @@ public class Ivogacha implements ModInitializer {
             	if (entry.displayName != null && !entry.displayName.isEmpty()) {
             		rewardName= Text.literal(entry.displayName).formatted(Formatting.YELLOW);
             	}else {
-            		rewardName= Text.literal(entry.pokemon_properties.especie.substring(0, 1).toUpperCase()+entry.pokemon_properties.especie.substring(1).toLowerCase()).formatted(Formatting.YELLOW);
+            		if(entry.pokemon_properties.shiny) {
+            			rewardName= Text.literal(entry.pokemon_properties.especie.substring(0, 1).toUpperCase()+entry.pokemon_properties.especie.substring(1).toLowerCase()+ "Shiny").formatted(Formatting.YELLOW);
+            		}
+            		else {
+            			rewardName= Text.literal(entry.pokemon_properties.especie.substring(0, 1).toUpperCase()+entry.pokemon_properties.especie.substring(1).toLowerCase()).formatted(Formatting.YELLOW);
+            		}
             	}
+            	
             } else {
             	if (entry.displayName != null && !entry.displayName.isEmpty()) {
             		rewardName= Text.literal(entry.displayName).formatted(Formatting.WHITE);
