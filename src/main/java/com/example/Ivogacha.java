@@ -463,19 +463,6 @@ public class Ivogacha implements ModInitializer {
         for (int i = 0; i < slots.size(); i++) {
             LootEntry entry = LootUtil.getLootEntryFromSlot(inventario, slots.get(i));
             LOGGER.info(jugador.getName().getLiteralString() + " HA CONSEGUIDO EN EL GACHA: " + entry.id);
-
-            // Determinar el nombre del premio
-            String rewardName = "";
-            if (entry.displayName != null && !entry.displayName.isEmpty()) {
-                rewardName = entry.displayName;
-            } else if (entry.Tipo.toLowerCase().equals("pokemon")) {
-                rewardName = entry.pokemon_properties.especie;
-            } else {
-                // Para items que no son de Pokemon, obtener el nombre traducido del item
-                ItemStack tempStack = LootUtil.createItemStack(entry.namespace, entry.id, entry.cantidad, entry.custom_model_data, entry.custom_data,entry.displayName);
-                rewardName = tempStack.getName().getString();
-            }
-
             // Procesar recompensa
             if (entry.Tipo.toLowerCase().equals("pokemon")) {
                 Pokemon pokemon = PokemonSpecies.INSTANCE.getByName(entry.pokemon_properties.especie).create(1);
@@ -512,11 +499,29 @@ public class Ivogacha implements ModInitializer {
                 ItemStack stack = LootUtil.createItemStack(entry.namespace, entry.id, entry.cantidad, entry.custom_model_data, entry.custom_data,entry.displayName);
                 jugador.giveItemStack(stack);
             }
+            
+            //nombre de la recompensa
+            Text rewardName = Text.literal("");
+            if (entry.Tipo.toLowerCase().equals("pokemon")) {
+            	if (entry.displayName != null && !entry.displayName.isEmpty()) {
+            		rewardName= Text.literal(entry.displayName).formatted(Formatting.YELLOW);
+            	}else {
+            		rewardName= Text.literal(entry.pokemon_properties.especie.substring(0, 1).toUpperCase()+entry.pokemon_properties.especie.substring(1).toLowerCase()).formatted(Formatting.YELLOW);
+            	}
+            } else {
+            	if (entry.displayName != null && !entry.displayName.isEmpty()) {
+            		rewardName= Text.literal(entry.displayName).formatted(Formatting.WHITE);
+            	}
+            	else {
+            		ItemStack tempStack = LootUtil.createItemStack(entry.namespace, entry.id, entry.cantidad, entry.custom_model_data, entry.custom_data,entry.displayName);
+            		rewardName= Text.literal(tempStack.getName().getString()).formatted(Formatting.WHITE);
+            	}
+
+            }
 
             MutableText mensaje = Text.literal("¡Has obtenido: ")
                     .formatted(Formatting.GREEN)
-                    .append(Text.literal(rewardName)
-                            .formatted(Formatting.WHITE))
+                    .append(rewardName)
                     .append(Text.literal("!")
                             .formatted(Formatting.GREEN));
             jugador.sendMessage(mensaje);

@@ -41,7 +41,6 @@ public class IvogachaClient implements ClientModInitializer {
 
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     public class PersistentItemDisplayEntity extends ItemDisplayEntity {
-        private boolean allowDiscard = false;
         private double anchoredX;
         private double anchoredY;
         private double anchoredZ;
@@ -51,11 +50,12 @@ public class IvogachaClient implements ClientModInitializer {
             this.anchoredX = x;
             this.anchoredY = y;
             this.anchoredZ = z;
-            
-        }
-
-        public void setAllowDiscard(boolean allowDiscard) {
-            this.allowDiscard = allowDiscard;
+            this.lastRenderX=x;            
+            this.lastRenderY=y;            
+            this.lastRenderZ=z;            
+            this.prevX=x;
+            this.prevY=y;
+            this.prevZ=z;
         }
         @Override
         public void move(MovementType type, Vec3d movement) {
@@ -119,7 +119,6 @@ public class IvogachaClient implements ClientModInitializer {
         spawnWaxOnParticles(world,x,y,z);
         scheduler.schedule(() -> {
             if (client.world != null) {
-            	itemDisplay.setAllowDiscard(true);
                 spawnWaxOnParticles(world,x,y,z);
                 client.world.removeEntity(itemDisplay.getId(), Entity.RemovalReason.DISCARDED);
             }
