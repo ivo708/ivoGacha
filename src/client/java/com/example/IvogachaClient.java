@@ -17,38 +17,57 @@ import net.minecraft.block.ChestBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.model.json.Transformation;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.CustomModelDataComponent;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.MovementType;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.DisplayEntity.BlockDisplayEntity;
 import net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.AffineTransformation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+
 
 public class IvogachaClient implements ClientModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger("ivoGachaClient");
 
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     public class PersistentItemDisplayEntity extends ItemDisplayEntity {
+        private boolean allowDiscard = false;
+        private double anchoredX;
+        private double anchoredY;
+        private double anchoredZ;
 
-        public PersistentItemDisplayEntity(EntityType<? extends ItemDisplayEntity> type, ClientWorld world) {
+        public PersistentItemDisplayEntity(EntityType<? extends ItemDisplayEntity> type, ClientWorld world,double x,double y,double z) {
             super(type, world);
+            this.anchoredX = x;
+            this.anchoredY = y;
+            this.anchoredZ = z;
+            
+        }
+
+        public void setAllowDiscard(boolean allowDiscard) {
+            this.allowDiscard = allowDiscard;
+        }
+        @Override
+        public void move(MovementType type, Vec3d movement) {
         }
 
         @Override
         public void tick() {
-            this.age = 0;
             super.tick();
+            this.setPos(anchoredX, anchoredY, anchoredZ);
         }
     }
+
     @Override
     public void onInitializeClient() {
         ClientPlayNetworking.registerGlobalReceiver(ChestOpenPayload.ID, (payload, context) -> {
@@ -72,18 +91,15 @@ public class IvogachaClient implements ClientModInitializer {
 
         ClientWorld world = client.world;
         
-        // Crea el ItemStack y añade el custom model data vía NBT (más fiable)
         ItemStack stack = new ItemStack(Items.BARRIER);
         stack.set(DataComponentTypes.CUSTOM_MODEL_DATA, new CustomModelDataComponent(chestDisplayCustomModelData));
 
-        // Calcula la posición centrada (ajusta según lo necesites)
         double x = pos.getX() + 0.5;
         double y = pos.getY() + 0.5;
         double z = pos.getZ() + 0.5;
         LOGGER.info("X:" + x + " Y:" + y + " Z:" + z);
 
-        // Usa la subclase que evita el despawn automático
-        PersistentItemDisplayEntity itemDisplay = new PersistentItemDisplayEntity(EntityType.ITEM_DISPLAY, world);
+        PersistentItemDisplayEntity itemDisplay = new PersistentItemDisplayEntity(EntityType.ITEM_DISPLAY, world,x,y,z);
         itemDisplay.refreshPositionAndAngles(x, y, z, 0.0F, 0.0F);
         itemDisplay.setItemStack(stack);
         
@@ -100,10 +116,11 @@ public class IvogachaClient implements ClientModInitializer {
         itemDisplay.setTransformation(finalTransformation);
         
         world.addEntity(itemDisplay);
-
-        // Si realmente necesitas eliminarla después de 20 segundos, mantén el scheduler
+        spawnWaxOnParticles(world,x,y,z);
         scheduler.schedule(() -> {
             if (client.world != null) {
+            	itemDisplay.setAllowDiscard(true);
+                spawnWaxOnParticles(world,x,y,z);
                 client.world.removeEntity(itemDisplay.getId(), Entity.RemovalReason.DISCARDED);
             }
         }, 23, TimeUnit.SECONDS);
@@ -141,5 +158,20 @@ public class IvogachaClient implements ClientModInitializer {
                 }
             });
         }, 23, TimeUnit.SECONDS);
+    }
+    
+    
+    public static void spawnWaxOnParticles(ClientWorld world, double x, double y, double z) {
+        int count = 100;
+        for (int i = 0; i < count; i++) {
+            double offsetX = (Math.random() - 0.5) * 3;
+            double offsetY = (Math.random() - 0.5) * 3;
+            double offsetZ = (Math.random() - 0.5) * 3;
+            double velocityX = 1;
+            double velocityY = 1;
+            double velocityZ = 1;
+
+            world.addParticle(ParticleTypes.WAX_OFF, x + offsetX, y + offsetY, z + offsetZ, velocityX, velocityY, velocityZ);
+        }
     }
 }

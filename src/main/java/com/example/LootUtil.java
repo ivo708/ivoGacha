@@ -93,11 +93,6 @@ public class LootUtil {
         return stack;
     }
     
-    /**
-     * Método auxiliar que crea el ItemStack basado en la loot entry y le añade toda la información de la misma en custom data.
-     * - Para Tipo "Item": se crea el ItemStack con createItemStack y se asigna un NBT que deja pokemon_properties vacío.
-     * - Para Tipo "Pokemon": se genera el ItemStack a partir del Pokémon y se guarda en el NBT la información de pokemon_properties.
-     */
     public static ItemStack buildItemStack(LootEntry selected) {
         ItemStack stack = null;
         if ("Item".equalsIgnoreCase(selected.Tipo)) {

@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.CustomModelDataComponent;
 import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.SimpleInventory;
@@ -39,6 +40,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -139,6 +141,10 @@ public class Ivogacha implements ModInitializer {
                     Style estiloNombre = style.withColor(TextColor.parse(colorNombre).getOrThrow());
                     Style estiloLore = style.withColor(TextColor.parse(colorLore).getOrThrow());
                     ItemStack chestItem = new ItemStack(Items.CHEST);
+                    if(poolEntry.get("chestDisplayCustomModelData").getAsInt()>0) {
+                    	chestItem=new ItemStack(Items.BARRIER);
+                        chestItem.set(DataComponentTypes.CUSTOM_MODEL_DATA, new CustomModelDataComponent(poolEntry.get("chestDisplayCustomModelData").getAsInt()));
+                    }
                     chestItem.set(DataComponentTypes.CUSTOM_NAME, Text.literal(nombre).setStyle(estiloNombre));
                     List<Text> loreList = new ArrayList<>();
                     loreList.add(Text.literal(lore).setStyle(estiloLore));
@@ -319,25 +325,7 @@ public class Ivogacha implements ModInitializer {
                 }, total, TimeUnit.MILLISECONDS);
                 total += 50 * ticks;
             }
-            ItemStack redGlassPane = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            ItemStack blueGlassPane = new ItemStack(Items.LIGHT_BLUE_STAINED_GLASS_PANE);
-
-            for(int j=0;j<9;j++) {
-            	if(j%2==0) {
-	                scheduler.schedule(() -> {
-	                    serverPlayer.getServer().execute(() -> {
-	                    	replaceItems(inventoryHolder[0],redGlassPane,blueGlassPane);
-	                    });
-	                },total+ j*500, TimeUnit.MILLISECONDS);
-            	}
-            	else {
-	                scheduler.schedule(() -> {
-	                    serverPlayer.getServer().execute(() -> {
-	                    	replaceItems(inventoryHolder[0],blueGlassPane,redGlassPane);
-	                    });
-	                },total+ j*500, TimeUnit.MILLISECONDS);
-            	}
-            }            
+            endInventory(serverPlayer,inventoryHolder,total,isMulti);            
             scheduler.schedule(() -> {
                 serverPlayer.getServer().execute(() -> {
                 	isFinished[0]=true;
@@ -352,6 +340,9 @@ public class Ivogacha implements ModInitializer {
         
 
     }
+    
+    
+    
     public static SimpleInventory fillDefaultInventory(SimpleInventory inventory) {
         Random random = new Random();
         for (int slot = 0; slot < inventory.size(); slot++) {
@@ -532,7 +523,98 @@ public class Ivogacha implements ModInitializer {
         }
     }
 
+    public static void endInventory(ServerPlayerEntity serverPlayer, SimpleInventory[] inventoryHolder, int total, boolean isMulti) {
+        // Paneles para replaceItems
+        ItemStack redGlassPane = new ItemStack(Items.RED_STAINED_GLASS_PANE);
+        ItemStack blueGlassPane = new ItemStack(Items.LIGHT_BLUE_STAINED_GLASS_PANE);
+        
+        List<Integer> slots = new ArrayList<>();
+        List<Integer> slots2 = new ArrayList<>();
+        if (!isMulti) {
+            slots.addAll(Arrays.asList(9, 10, 11, 12, 14, 15, 16, 17));
+        } else {
+            slots.addAll(Arrays.asList(9, 10, 16, 17));
+            slots2.addAll(Arrays.asList(36, 37, 43, 44));
+        }
+        
+        List<Integer> orderedSlots = orderSlotsFromExtremesToCenter(slots);
+        List<Integer> orderedSlots2 = new ArrayList<>();
+        if (isMulti) {
+            orderedSlots2 = orderSlotsFromExtremesToCenter(slots2);
+        }
+        
+        for (int j = 0; j < 9; j++) {
+            if (j % 2 == 0) {
+                scheduler.schedule(() -> {
+                    serverPlayer.getServer().execute(() -> {
+                        replaceItems(inventoryHolder[0], redGlassPane, blueGlassPane);
+                    });
+                }, total + j * 500, TimeUnit.MILLISECONDS);
+            } else {
+                scheduler.schedule(() -> {
+                    serverPlayer.getServer().execute(() -> {
+                        replaceItems(inventoryHolder[0], blueGlassPane, redGlassPane);
+                    });
+                }, total + j * 500, TimeUnit.MILLISECONDS);
+            }
+            
+            if (j >= 2 && j<orderedSlots.size()+2) {
+                int pairIndex = j - 2; 
+                if (pairIndex * 2 + 1 < orderedSlots.size()) {
+                    int slot1 = orderedSlots.get(pairIndex * 2);
+                    int slot2 = orderedSlots.get(pairIndex * 2 + 1);
+                    scheduler.schedule(() -> {
+                        serverPlayer.getServer().execute(() -> {
+                            // Cada slot recibe un panel aleatorio (cada uno se genera de forma independiente)
+                            inventoryHolder[0].setStack(slot1, getRandomGlassPane());
+                            inventoryHolder[0].setStack(slot2, getRandomGlassPane());
+                        });
+                    }, total + j * 500, TimeUnit.MILLISECONDS);
+                }
+                // Si es modo multi, se actualiza el segundo grupo de slots de igual forma
+                if (isMulti && !orderedSlots2.isEmpty() && pairIndex * 2 + 1 < orderedSlots2.size()) {
+                    int slot1 = orderedSlots2.get(pairIndex * 2);
+                    int slot2 = orderedSlots2.get(pairIndex * 2 + 1);
+                    scheduler.schedule(() -> {
+                        serverPlayer.getServer().execute(() -> {
+                            inventoryHolder[0].setStack(slot1, getRandomGlassPane());
+                            inventoryHolder[0].setStack(slot2, getRandomGlassPane());
+                        });
+                    }, total + j * 500, TimeUnit.MILLISECONDS);
+                }
+            }
+        }
+    }
 
+    private static ItemStack getRandomGlassPane() {
+        double chance = Math.random(); // o random.nextDouble() si dispones de una instancia Random
+        if (chance < 0.44) {
+            return new ItemStack(Items.MAGENTA_STAINED_GLASS_PANE);
+        } else if (chance < 0.88) {
+            return new ItemStack(Items.PURPLE_STAINED_GLASS_PANE);
+        } else {
+            return new ItemStack(Items.YELLOW_STAINED_GLASS_PANE);
+        }
+    }
+
+    private static List<Integer> orderSlotsFromExtremesToCenter(List<Integer> slots) {
+        List<Integer> sorted = new ArrayList<>(slots);
+        Collections.sort(sorted);
+        List<Integer> result = new ArrayList<>();
+        int left = 0;
+        int right = sorted.size() - 1;
+        while (left <= right) {
+            if (left == right) {
+                result.add(sorted.get(left));
+            } else {
+                result.add(sorted.get(left));
+                result.add(sorted.get(right));
+            }
+            left++;
+            right--;
+        }
+        return result;
+    }
 
     public static void replaceItems(SimpleInventory inventory, ItemStack itemOriginal, ItemStack itemNuevo) {
         for (int i = 0; i < inventory.size(); i++) {
